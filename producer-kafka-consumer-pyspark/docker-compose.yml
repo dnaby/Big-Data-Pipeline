@@ -1,0 +1,90 @@
+version: '3'
+
+services:
+  # ----------------- #
+  # Apache Spark      #
+  # ----------------- #
+  spark-master:
+    image: docker.io/bitnami/spark:3.3
+    container_name: spark-master
+    networks:
+      - pipeline
+    environment:
+      - SPARK_MODE=master
+    ports:
+      - '8080:8080'
+      - '4040:4040'
+      - '7077:7077'
+    volumes:
+      - ./src:/src
+    #command: >
+    #  bash -c 'sleep 30 & spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.2 /src/streaming/read_stream.py'
+
+  spark-worker:
+    image: docker.io/bitnami/spark:3.3
+    container_name: spark-worker
+    networks:
+      - pipeline
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=4G
+      - SPARK_EXECUTOR_MEMORY=4G
+      - SPARK_WORKER_CORES=4
+    volumes:
+      - ./src:/src
+    depends_on:
+      - spark-master
+
+  # ----------------- #
+  # ZooKeeper         #
+  # ----------------- #
+  zookeeper:
+    image: docker.io/bitnami/zookeeper:3.8
+    container_name: zookeeper
+    networks:
+      - pipeline
+    ports:
+      - "2181:2181"
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+
+  # ----------------- #
+  # Apache Kafka      #
+  # ----------------- #
+  kafka:
+    image: docker.io/bitnami/kafka:3.3
+    container_name: kafka
+    networks:
+      - pipeline
+    ports:
+      - "9092:9092"
+    environment:
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    depends_on:
+      - zookeeper
+
+  # ----------------- #
+  # Producer Python   #
+  # ----------------- #
+  kafka-producer:
+    container_name: kafka-producer
+    networks:
+      - pipeline
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    volumes:
+      - ./code/weather_producer.py:/app/weather_producer.py
+      - ./code/create_topic.py:/app/create_topic.py
+      - ./code/create_producer.py:/app/create_producer.py
+    command: >
+      bash -c 'sleep 20 && python /app/create_topic.py && python /app/weather_producer.py'
+    depends_on:
+      - kafka
+
+networks:
+  pipeline:
+    external: true

@@ -1,0 +1,60 @@
+version: '3'
+services:
+  #------------------#
+  #   Elasticsearch  #
+  #------------------#
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.3.3
+    container_name: elasticsearch
+    networks:
+      - pipeline
+    volumes:
+      - ./elasticsearch:/usr/share/elasticsearch/data
+    environment:
+      - bootstrap.memory_lock=true
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+    ports:
+      - 9200:9200
+
+  #------------------#
+  #    Logstash      #
+  #------------------#
+  logstash:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: logstash
+    networks:
+      - pipeline
+    ports:
+      - 5959:5959
+    volumes:
+      - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+    depends_on:
+      - elasticsearch
+
+  #------------------#
+  #      Kibana      #
+  #------------------#
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.3.3
+    container_name: kibana
+    networks:
+      - pipeline
+    volumes:
+      - ./kibana.yml:/usr/share/kibana/config/kibana.yml
+    environment:
+      - xpack.encryptedSavedObjects.encryptionKey=27a69ce4732e77e246bb15cd1ca1e7db
+      - xpack.reporting.encryptionKey=ad61a475cc9ce759adbb6551a88cc125
+      - xpack.security.encryptionKey=4e019fb53c174ea8bdec71206d9f3760
+    ports:
+      - 5601:5601
+    depends_on:
+      - elasticsearch
+
+
+networks:
+  pipeline:
+    external: true
