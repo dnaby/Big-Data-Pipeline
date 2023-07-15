@@ -1,6 +1,6 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import from_json, explode, element_at
-from pyspark.sql.types import StructType, StructField, StringType, IntegerType, DoubleType, ArrayType
+from pyspark.sql.functions import from_json, explode, element_at,col
+from pyspark.sql.types import StructType, StructField, StringType, IntegerType, DoubleType, ArrayType, TimestampType
 
 data_schema = StructType([
     StructField("data", ArrayType(StructType([
@@ -64,6 +64,9 @@ df = df.select("exploded_data.clouds", "exploded_data.dew_point", "exploded_data
                "data.lat", "data.lon", "data.timezone", "data.timezone_offset")
 
 # TODO faire le preprocessing ici
+df = df.withColumn("timestamp", col("dt").cast(TimestampType()))
+
+df = df.drop("dt", "clouds")
 
 # TODO faire une prédiction ici
 
