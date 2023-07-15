@@ -13,6 +13,7 @@ Pour executer ce pipeline, il vous faudra avoir docker et docker-compse installÃ
 
 ```bash
 cd pipeline
+docker network create pipeline
 bash run.sh
 ```
 

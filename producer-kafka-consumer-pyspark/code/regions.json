@@ -1,0 +1,62 @@
+[
+    {
+        "name": "Cap-Skirring",
+        "latitude": 12.4,
+        "longitude": -16.75
+    },
+    {
+        "name": "Dakar/Yoff",
+        "latitude": 14.7333,
+        "longitude": -17.5
+    },
+    {
+        "name": "Diourbel",
+        "latitude": 14.65,
+        "longitude": -16.2333
+    },
+    {
+        "name": "Kaolack",
+        "latitude": 14.1333,
+        "longitude": -16.0667
+    },
+    {
+        "name": "Kedougou",
+        "latitude": 12.5667,
+        "longitude": -12.2167
+    },
+    {
+        "name": "Kolda",
+        "latitude": 12.8833,
+        "longitude": -14.9667
+    },
+    {
+        "name": "Linguere",
+        "latitude": 15.3833,
+        "longitude": -15.1167
+    },
+    {
+        "name": "Matam",
+        "latitude": 15.65,
+        "longitude": -13.25
+    },
+    {
+        "name": "Podor",
+        "latitude": 16.65,
+        "longitude": -14.9667
+    },
+    {
+        "name": "Saint-Louis",
+        "latitude": 16.05,
+        "longitude": -16.45
+    },
+    {
+        "name": "Tambacounda",
+        "latitude": 13.7667,
+        "longitude": -13.6833
+    },
+    {
+        "name": "Ziguinchor",
+        "latitude": 12.55,
+        "longitude": -16.2667
+    }
+]

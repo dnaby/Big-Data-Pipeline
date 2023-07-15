@@ -11,40 +11,43 @@ topic = 'openweathermap'
 
 # Configuration de la connexion à l'API OpenWeatherMap
 api_key = '1faffa257e9d684c74c4580c700c64da'
-latitude = '14.693425'
-longitude = '-17.447938'
 lang = 'fr'
 units = "metric"
 
 # Fonction pour récupérer les données de l'API OpenWeatherMap et les publier sur Apache Kafka
-def fetch_and_publish_weather() -> None:
+def fetch_and_publish_weather(region: dict) -> None:
     # Log
-    print("Sending request...")
+    print(f"Sending request for {region['name']}...")
     # Récupération des données de l'API OpenWeatherMap
     current = int(time.time())
-    url = f'https://api.openweathermap.org/data/3.0/onecall/timemachine?lat={latitude}&lon={longitude}&lang={lang}&units={units}&dt={current}&appid={api_key}'
+    url = f"https://api.openweathermap.org/data/3.0/onecall/timemachine?lat={region['latitude']}&lon={region['longitude']}&lang={lang}&units={units}&dt={current}&appid={api_key}"
     response = requests.get(url)
     if response.status_code == 200:
         data = response.json()
+        # Ajouter le nom de la région aux données
+        data['region_name'] = region['name']
         # Log
-        print("Request sended✅")
-        print("Response: ", end=" ")
+        print(f"Request sended for {region['name']}✅")
+        print(f"Response for {region['name']}: ", end=" ")
         pprint(data)
         # Conversion des données en bytes
         value_bytes = json.dumps(data).encode('utf-8')
         # Log
-        print("Sending data...")
+        print(f"Sending data for {region['name']}...")
         # Envoi des données sur le topic Apache Kafka
         producer.send(topic, value=value_bytes)
-        print("Data sended✅")
+        print(f"Data sended for {region['name']}✅")
 
-# Planification de la tâche toutes les 15 minutes
-schedule.every(1).minutes.do(fetch_and_publish_weather)
-
-# Boucle principale pour exécuter les tâches planifiées
+# Charger les données des régions depuis le fichier JSON
+with open('regions.json') as file:
+    regions = json.load(file)
+    
+# Boucle principale pour exécuter les tâches planifiées pour chaque région
 while True:
+    for region in regions:
+        schedule.every(5).minutes.do(fetch_and_publish_weather, region=region)
     schedule.run_pending()
     time.sleep(1)
-
+    
 # Fermeture du producteur Kafka (ne sera jamais atteint dans cet exemple)
 producer.close()
