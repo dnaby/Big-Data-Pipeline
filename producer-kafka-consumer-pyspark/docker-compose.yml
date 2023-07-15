@@ -81,7 +81,7 @@ services:
       - ./code/create_topic.py:/app/create_topic.py
       - ./code/create_producer.py:/app/create_producer.py
     command: >
-      bash -c 'sleep 20 && python /app/create_topic.py && python /app/weather_producer.py'
+      bash -c 'sleep 10 && python /app/create_topic.py && python /app/weather_producer.py'
     depends_on:
       - kafka
 

@@ -16,27 +16,26 @@ longitude = '-17.447938'
 lang = 'fr'
 
 # Fonction pour récupérer les données de l'API OpenWeatherMap et les publier sur Apache Kafka
-def fetch_and_publish_weather():
+def fetch_and_publish_weather() -> None:
     # Log
     print("Sending request...")
     # Récupération des données de l'API OpenWeatherMap
-    url = f'https://api.openweathermap.org/data/3.0/onecall?lat={latitude}&lon={longitude}&lang={lang}&appid={api_key}'
+    current = int(time.time())
+    url = f'https://api.openweathermap.org/data/3.0/onecall/timemachine?lat={latitude}&lon={longitude}&lang={lang}&dt={current}&appid={api_key}'
     response = requests.get(url)
-    data = response.json()
-    
-    # Log
-    print("Request sended✅")
-    print("Response: ", end=" ")
-    pprint(data)
-    
-    # Conversion des données en bytes
-    value_bytes = json.dumps(data).encode('utf-8')
-
-    # Log
-    print("Sending data...")
-    # Envoi des données sur le topic Apache Kafka
-    producer.send(topic, value=value_bytes)
-    print("Data sended✅")
+    if response.status_code == 200:
+        data = response.json()
+        # Log
+        print("Request sended✅")
+        print("Response: ", end=" ")
+        pprint(data)
+        # Conversion des données en bytes
+        value_bytes = json.dumps(data).encode('utf-8')
+        # Log
+        print("Sending data...")
+        # Envoi des données sur le topic Apache Kafka
+        producer.send(topic, value=value_bytes)
+        print("Data sended✅")
 
 # Planification de la tâche toutes les 15 minutes
 schedule.every(1).minutes.do(fetch_and_publish_weather)
