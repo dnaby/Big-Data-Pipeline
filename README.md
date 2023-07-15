@@ -16,6 +16,12 @@ cd pipeline
 bash run.sh
 ```
 
+And in order to execute the pyspark stream processing. Go to the spark-master container and execute this commande:
+
+```bash
+spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.0 /src/streaming/read_stream.py
+```
+
 Vous pouvez accéder à l'interface graphique de kibana depuis le localhost:5601.
 
 ## Producer
