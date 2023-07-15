@@ -14,6 +14,7 @@ api_key = '1faffa257e9d684c74c4580c700c64da'
 latitude = '14.693425'
 longitude = '-17.447938'
 lang = 'fr'
+units = "metric"
 
 # Fonction pour récupérer les données de l'API OpenWeatherMap et les publier sur Apache Kafka
 def fetch_and_publish_weather() -> None:
@@ -21,7 +22,7 @@ def fetch_and_publish_weather() -> None:
     print("Sending request...")
     # Récupération des données de l'API OpenWeatherMap
     current = int(time.time())
-    url = f'https://api.openweathermap.org/data/3.0/onecall/timemachine?lat={latitude}&lon={longitude}&lang={lang}&dt={current}&appid={api_key}'
+    url = f'https://api.openweathermap.org/data/3.0/onecall/timemachine?lat={latitude}&lon={longitude}&lang={lang}&units={units}&dt={current}&appid={api_key}'
     response = requests.get(url)
     if response.status_code == 200:
         data = response.json()
