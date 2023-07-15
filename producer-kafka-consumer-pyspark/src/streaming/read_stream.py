@@ -66,12 +66,6 @@ df = df.select("exploded_data.clouds", "exploded_data.dew_point", "exploded_data
 # TODO faire le preprocessing ici
 df = df.withColumn("timestamp", col("dt").cast(TimestampType()))
 
-#df = df.withColumn("temperature_celsius", col("temp") / 10)
-
-#df = df.withColumn("humidity_percentage", col("humidity") / 100)
-
-# Drop the original columns after preprocessing
-#df = df.drop("dt", "temp", "humidity")
 df = df.drop("dt", "clouds")
 
 # TODO faire une prédiction ici
