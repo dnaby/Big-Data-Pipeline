@@ -1,6 +1,9 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import from_json, explode, element_at,col
+from pyspark.sql.functions import from_json, explode, element_at, col
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType, DoubleType, ArrayType, TimestampType
+import requests
+import json
+
 
 data_schema = StructType([
     StructField("data", ArrayType(StructType([
@@ -44,7 +47,7 @@ df = spark.readStream.format("kafka") \
     .option("subscribe", KAFKA_TOPIC) \
     .option("startingOffsets", "earliest") \
     .load()
-    
+
 df = df.selectExpr("CAST(value AS STRING)")
 
 # Apply the schema to the JSON data
@@ -57,7 +60,8 @@ df = df.withColumn("exploded_data", explode("data.data"))
 df = df.select("exploded_data.clouds", "exploded_data.dew_point", "exploded_data.dt", "exploded_data.feels_like",
                "exploded_data.humidity", "exploded_data.pressure", "exploded_data.sunrise", "exploded_data.sunset",
                "exploded_data.temp", "exploded_data.uvi", "exploded_data.visibility",
-               element_at("exploded_data.weather.description", 1).alias("description"), 
+               element_at("exploded_data.weather.description",
+                          1).alias("description"),
                element_at("exploded_data.weather.icon", 1).alias("icon"),
                element_at("exploded_data.weather.id", 1).alias("id"),
                element_at("exploded_data.weather.main", 1).alias("main"),
@@ -68,7 +72,29 @@ df = df.withColumn("timestamp", col("dt").cast(TimestampType()))
 
 df = df.drop("dt", "clouds")
 
+
 # TODO faire une prédiction ici
+# Set the endpoint URL
+url = "http://localhost:8000/predict"
+
+# Grouper par lon et lat
+grouped_df = df.groupBy("lon", "lat")
+
+# Create a list of data for each region
+dataframes = []
+#payloads = []
+for group in grouped_df.groups.collect():
+    lon_val, lat_val = group[0], group[1]
+    filtered_df = df.filter((col("lon") == lon_val) & (col("lat") == lat_val))
+    data_df = filtered_df.select("lon", "lat", "dt", "temp" )
+    payload = data_df.to_dict(orient="records")
+    response = requests.get(url, json=payload)
+    if response.status_code == 200:
+        data = response.json()
+        predictions = data["predictions"]
+        filtered_df[predictions] = predictions
+        dataframes.append(filtered_df)
+
 
 # TODO récuperer la prédiction et écrire sur la base de données MongoDB
 
