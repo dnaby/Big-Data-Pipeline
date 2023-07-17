@@ -17,8 +17,8 @@ docker-compose up -d
 # Revenir au dossier parent
 cd ..
 
-# Déplacer vers le dossier api
-cd ./api
+# Déplacer vers le dossier Temperature-Forecasting
+cd ./Temperature-Forecasting
 
-# Exécuter docker-compose dans le dossier api
+# Exécuter docker-compose dans le dossier Temperature-Forecasting
 docker-compose up -d

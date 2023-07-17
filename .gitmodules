@@ -1,0 +1,3 @@
+[submodule "Temperature-Forecasting"]
+	path = Temperature-Forecasting
+	url = https://github.com/dnaby/Temperature-Forecasting.git
