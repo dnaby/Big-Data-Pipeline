@@ -3,39 +3,38 @@ from pyspark.sql.functions import from_json, explode, element_at, col
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType, DoubleType, ArrayType, TimestampType
 from pymongo import MongoClient
 
-data_schema = StructType([
-    StructField("data", ArrayType(StructType([
-        StructField("clouds", IntegerType()),
-        StructField("dew_point", DoubleType()),
-        StructField("dt", IntegerType()),
-        StructField("feels_like", DoubleType()),
-        StructField("humidity", IntegerType()),
-        StructField("pressure", IntegerType()),
-        StructField("sunrise", IntegerType()),
-        StructField("sunset", IntegerType()),
-        StructField("temp", DoubleType()),
-        StructField("uvi", DoubleType()),
-        StructField("visibility", IntegerType()),
-        StructField("weather", ArrayType(StructType([
-            StructField("description", StringType()),
-            StructField("icon", StringType()),
-            StructField("id", IntegerType()),
-            StructField("main", StringType())
-        ]))),
-        StructField("wind_deg", IntegerType()),
-        StructField("wind_gust", DoubleType()),
-        StructField("wind_speed", DoubleType())
-    ]))),
-    StructField("lat", DoubleType()),
-    StructField("lon", DoubleType()),
-    StructField("timezone", StringType()),
-    StructField("timezone_offset", IntegerType())
-])
+data_schema = ArrayType(StructType([
+    StructField('data_clouds', IntegerType()),
+    StructField('data_dew_point', DoubleType()),
+    StructField('data_dt', IntegerType()),
+    StructField('data_feels_like', DoubleType()),
+    StructField('data_humidity', IntegerType()),
+    StructField('data_pressure', IntegerType()),
+    StructField('data_sunrise', IntegerType()),
+    StructField('data_sunset', IntegerType()),
+    StructField('data_temp', DoubleType()),
+    StructField('data_uvi', DoubleType()),
+    StructField('data_visibility', IntegerType()),
+    StructField('data_weather_description', StringType()),
+    StructField('data_weather_icon', StringType()),
+    StructField('data_weather_id', IntegerType()),
+    StructField('data_weather_main', StringType()),
+    StructField('data_wind_deg', IntegerType()),
+    StructField('data_wind_gust', DoubleType()),
+    StructField('data_wind_speed', DoubleType()),
+    StructField('lat', DoubleType()),
+    StructField('lon', DoubleType()),
+    StructField('region_name', StringType()),
+    StructField('timezone', StringType()),
+    StructField('timezone_offset', IntegerType())
+]))
 
 KAFKA_BOOTSTRAP_SERVERS = "kafka:9092"
 KAFKA_TOPIC = "openweathermap"
 MONGODB_CONNECTION_STRING = "mongodb+srv://openweathermap:Ept2023@cluster0.fafwdse.mongodb.net?retryWrites=true&w=majority"
 API_ENDPOINT = "http://your-api-endpoint"
+
+spark = SparkSession.builder.appName("read_test_stream").getOrCreate()
 
 spark = SparkSession.builder.appName("read_test_stream").getOrCreate()
 
@@ -50,25 +49,37 @@ df = spark.readStream.format("kafka") \
     
 df = df.selectExpr("CAST(value AS STRING)")
 
-# Apply the schema to the JSON data
+# Convertir la colonne "value" en JSON en utilisant le schéma défini
 df = df.withColumn("data", from_json("value", data_schema))
+df = df.withColumn("exploded", explode("data"))
 
-# Explode the "data" array column
-df = df.withColumn("exploded_data", explode("data.data"))
-
-# Select the desired columns from the exploded data
-df = df.select("exploded_data.clouds", "exploded_data.dew_point", "exploded_data.dt", "exploded_data.feels_like",
-               "exploded_data.humidity", "exploded_data.pressure", "exploded_data.sunrise", "exploded_data.sunset",
-               "exploded_data.temp", "exploded_data.uvi", "exploded_data.visibility",
-               element_at("exploded_data.weather.description", 1).alias("description"), 
-               element_at("exploded_data.weather.icon", 1).alias("icon"),
-               element_at("exploded_data.weather.id", 1).alias("id"),
-               element_at("exploded_data.weather.main", 1).alias("main"),
-               "data.lat", "data.lon", "data.timezone", "data.timezone_offset", "data.region_name")
+df = df.select(
+    col("exploded.data_dew_point").alias("dew_point"),
+    col("exploded.data_dt").alias("dt"),
+    col("exploded.data_feels_like").alias("feels_like"),
+    col("exploded.data_humidity").alias("humidity"),
+    col("exploded.data_pressure").alias("pressure"),
+    col("exploded.data_sunrise").alias("sunrise"),
+    col("exploded.data_sunset").alias("sunset"),
+    col("exploded.data_temp").alias("temp"),
+    col("exploded.data_uvi").alias("uvi"),
+    col("exploded.data_visibility").alias("visibility"),
+    col("exploded.data_weather_description").alias("description"),
+    col("exploded.data_weather_main").alias("main"),
+    col("exploded.data_wind_deg").alias("wind_deg"),
+    col("exploded.data_wind_gust").alias("wind_gust"),
+    col("exploded.data_wind_speed").alias("wind_speed"),
+    col("exploded.lat").alias("lat"),
+    col("exploded.lon").alias("lon"),
+    col("exploded.region_name").alias("region"),
+    col("exploded.timezone").alias("timezone")
+)
 
 # TODO faire le preprocessing ici
-def preprocess(data):
-    df = df.withColumn("timestamp", col("dt").cast(TimestampType()))
+df = df.withColumn("timestamp", col("dt").cast(TimestampType()))
+df = df.withColumn("sunrise", col("sunrise").cast(TimestampType()))
+df = df.withColumn("sunset", col("sunset").cast(TimestampType()))
+df = df.drop("dt")
 
 # TODO faire une prédiction ici
 def predict_temperature(data):
@@ -77,19 +88,16 @@ def predict_temperature(data):
 
 # TODO récuperer la prédiction et écrire sur la base de données MongoDB
 def process_batch(batch_df, batch_id):
-    # Prétraitement sur tout le batch
-    preprocessed_df = preprocess(batch_df)
-
     # Répartition des données par région
-    regions_df = preprocessed_df.groupBy("region_name")
+    regions_df = batch_df.groupBy("region")
     regions = regions_df.count().collect()
     
     # Boucle sur chaque région
     for region in regions:
-        region_name = region["region_name"]
+        region_name = region["region"]
 
         # Faire la prédiction sur les données de la région
-        region_data = regions_df.filter(regions_df["region_name"] == region_name)
+        region_data = regions_df.filter(regions_df["region"] == region_name)
         predictions = region_data.rdd.map(predict_temperature).collect()
 
         # Écrire les données dans MongoDB
