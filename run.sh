@@ -3,7 +3,7 @@
 cd ./elk
 
 # Exécuter docker-compose dans le dossier elk
-sudo docker compose up -d
+docker-compose up -d
 
 # Revenir au dossier parent
 cd ..
@@ -12,4 +12,13 @@ cd ..
 cd ./producer-kafka-consumer-pyspark
 
 # Exécuter docker-compose dans le dossier producer-kafka-consumer-pyspark
-docker compose up -d
+docker-compose up -d
+
+# Revenir au dossier parent
+cd ..
+
+# Déplacer vers le dossier api
+cd ./api
+
+# Exécuter docker-compose dans le dossier api
+docker-compose up -d

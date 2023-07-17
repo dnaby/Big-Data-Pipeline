@@ -1,5 +1,5 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import from_json, explode, element_at, col
+from pyspark.sql.functions import from_json, explode, col
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType, DoubleType, ArrayType, TimestampType
 from pymongo import MongoClient
 
@@ -32,7 +32,7 @@ data_schema = ArrayType(StructType([
 KAFKA_BOOTSTRAP_SERVERS = "kafka:9092"
 KAFKA_TOPIC = "openweathermap"
 MONGODB_CONNECTION_STRING = "mongodb+srv://openweathermap:Ept2023@cluster0.fafwdse.mongodb.net?retryWrites=true&w=majority"
-API_ENDPOINT = "http://your-api-endpoint"
+API_ENDPOINT = "http://api:9200/predict"
 
 spark = SparkSession.builder.appName("read_test_stream").getOrCreate()
 
@@ -88,29 +88,8 @@ def predict_temperature(data):
 
 # TODO récuperer la prédiction et écrire sur la base de données MongoDB
 def process_batch(batch_df, batch_id):
-    # Répartition des données par région
-    regions_df = batch_df.groupBy("region")
-    regions = regions_df.count().collect()
-    
-    # Boucle sur chaque région
-    for region in regions:
-        region_name = region["region"]
-
-        # Faire la prédiction sur les données de la région
-        region_data = regions_df.filter(regions_df["region"] == region_name)
-        predictions = region_data.rdd.map(predict_temperature).collect()
-
-        # Écrire les données dans MongoDB
-        client = MongoClient(MONGODB_CONNECTION_STRING)
-        db = client[region_name]
-        weather_collection = db["weather"]
-        predictions_collection = db["predictions"]
-
-        # Écrire les données de la région dans la collection "weather"
-        #weather_collection.insert_many(region_data.toPandas().to_dict(orient="records"))
-
-        # Écrire les prédictions dans la collection "predictions"
-        #predictions_collection.insert_many(predictions)
+    # Faire les predictions et enregistrer les données dans la base
+    pass
 
 # Appliquer une transformation pour chaque batch de données
 df.writeStream \

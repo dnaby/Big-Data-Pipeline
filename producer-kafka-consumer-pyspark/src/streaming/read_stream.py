@@ -1,6 +1,8 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import from_json, explode, col
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType, DoubleType, ArrayType, TimestampType
+import requests
+
 
 data_schema = ArrayType(StructType([
     StructField('data_clouds', IntegerType()),
@@ -41,7 +43,7 @@ df = spark.readStream.format("kafka") \
     .option("subscribe", KAFKA_TOPIC) \
     .option("startingOffsets", "earliest") \
     .load()
-    
+
 df = df.selectExpr("CAST(value AS STRING)")
 
 # Convertir la colonne "value" en JSON en utilisant le schéma défini
@@ -76,7 +78,29 @@ df = df.withColumn("sunrise", col("sunrise").cast(TimestampType()))
 df = df.withColumn("sunset", col("sunset").cast(TimestampType()))
 df = df.drop("dt")
 
+
 # TODO faire une prédiction ici
+# Set the endpoint URL
+url = "http://localhost:8000/predict"
+
+# Grouper par lon et lat
+grouped_df = df.groupBy("lon", "lat")
+
+# Create a list of data for each region
+dataframes = []
+#payloads = []
+for group in grouped_df.groups.collect():
+    lon_val, lat_val = group[0], group[1]
+    filtered_df = df.filter((col("lon") == lon_val) & (col("lat") == lat_val))
+    data_df = filtered_df.select("lon", "lat", "dt", "temp" )
+    payload = data_df.to_dict(orient="records")
+    response = requests.get(url, json=payload)
+    if response.status_code == 200:
+        data = response.json()
+        predictions = data["predictions"]
+        filtered_df[predictions] = predictions
+        dataframes.append(filtered_df)
+
 
 # TODO récuperer la prédiction et écrire sur la base de données MongoDB
 
