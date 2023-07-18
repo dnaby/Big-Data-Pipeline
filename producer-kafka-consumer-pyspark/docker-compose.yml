@@ -18,7 +18,7 @@ services:
     volumes:
       - ./src:/src
     #command: >
-    #  bash -c 'sleep 30 & spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.2 /src/streaming/read_stream.py'
+    #  bash -c 'sleep 30 && pip install --no-cache-dir -r /src/requirements.txt --no-warn-script-location'
 
   spark-worker:
     image: docker.io/bitnami/spark:3.3

@@ -1,8 +1,10 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import from_json, explode, col
+from pyspark.sql.functions import from_json, explode, col, to_timestamp
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType, DoubleType, ArrayType, TimestampType
+from pymongo import MongoClient
+import json
 import requests
-
+from pprint import pprint
 
 data_schema = ArrayType(StructType([
     StructField('data_clouds', IntegerType()),
@@ -32,6 +34,10 @@ data_schema = ArrayType(StructType([
 
 KAFKA_BOOTSTRAP_SERVERS = "kafka:9092"
 KAFKA_TOPIC = "openweathermap"
+MONGODB_CONNECTION_STRING = "mongodb+srv://openweathermap:Ept2023@cluster0.fafwdse.mongodb.net/test?retryWrites=true&w=majority"
+API_ENDPOINT = "http://api:8000/predict/"
+
+spark = SparkSession.builder.appName("read_test_stream").getOrCreate()
 
 spark = SparkSession.builder.appName("read_test_stream").getOrCreate()
 
@@ -43,7 +49,7 @@ df = spark.readStream.format("kafka") \
     .option("subscribe", KAFKA_TOPIC) \
     .option("startingOffsets", "earliest") \
     .load()
-
+    
 df = df.selectExpr("CAST(value AS STRING)")
 
 # Convertir la colonne "value" en JSON en utilisant le schéma défini
@@ -76,36 +82,74 @@ df = df.select(
 df = df.withColumn("timestamp", col("dt").cast(TimestampType()))
 df = df.withColumn("sunrise", col("sunrise").cast(TimestampType()))
 df = df.withColumn("sunset", col("sunset").cast(TimestampType()))
+
 df = df.drop("dt")
 
-
-# TODO faire une prédiction ici
-# Set the endpoint URL
-url = "http://localhost:8000/predict"
-
-# Grouper par lon et lat
-grouped_df = df.groupBy("lon", "lat")
-
-# Create a list of data for each region
-dataframes = []
-#payloads = []
-for group in grouped_df.groups.collect():
-    lon_val, lat_val = group[0], group[1]
-    filtered_df = df.filter((col("lon") == lon_val) & (col("lat") == lat_val))
-    data_df = filtered_df.select("lon", "lat", "dt", "temp" )
-    payload = data_df.to_dict(orient="records")
-    response = requests.get(url, json=payload)
-    if response.status_code == 200:
-        data = response.json()
-        predictions = data["predictions"]
-        filtered_df[predictions] = predictions
-        dataframes.append(filtered_df)
-
-
 # TODO récuperer la prédiction et écrire sur la base de données MongoDB
+def process_batch(batch_df, batch_id):
+    # Écrire les données dans MongoDB
+    client = MongoClient(MONGODB_CONNECTION_STRING)
+    
+    # Appel à l'API pour obtenir les prédictions de température
+    regions_df = batch_df.groupBy("region")
+    regions = regions_df.count().collect()
+    
+    # Boucle sur chaque région
+    for region in regions:
+        region_name = region["region"]
+        # BD
+        db = client[region_name.replace('/', '_')]
+        weather_collection = db["weather"]
+        predictions_collection = db["predictions"]
+        # Faire la prédiction sur les données de la région
+        region_data = batch_df.filter(batch_df["region"] == region_name)
+        # Récupérer lat et lon pour la région
+        lat = region_data.select("lat").first()[0]
+        lon = region_data.select("lon").first()[0]
+        # Récupérer les colonnes ds et temp
+        data_to_send = region_data.select(col("timestamp").alias("ds").cast(StringType()), col("temp").alias("y")).toPandas()
+        # Convert DataFrame to a list of dictionaries
+        data_to_send = data_to_send.to_dict(orient="records")
+        # créer le payload
+        payload = {
+            "latitude": float(lat),
+            "longitude": float(lon),
+            "data": data_to_send
+        }
+        pprint(payload)
+        #payload = json.dumps(payload)
+        # Make the POST request
+        response = requests.get(API_ENDPOINT, json=payload)
+        # Check the response status code
+        if response.status_code == 200:
+            # Successful response
+            data_response = response.json()
+            predictions = data_response["predictions"]
+            for prediction in predictions:
+                # Check if there is an existing prediction with the same timestamp
+                existing_predictions = predictions_collection.count_documents({"timestamp": prediction["timestamp"]})
+                if existing_predictions > 0:
+                    # Update the existing prediction with the new temperature value
+                    predictions_collection.update_many({"timestamp": prediction["timestamp"]}, {"$set": {"temperature": prediction["temperature"]}})
+                else:
+                    # Insert the new prediction into the collection
+                    predictions_collection.insert_one(prediction)
+            print("Temperature Predictions: ", end="")
+            pprint(predictions)
+        else:
+            # Error response
+            pprint(response.text)
+            
+        weather_data = region_data.withColumn("timestamp", col("timestamp").cast(StringType()))
+        weather_data = weather_data.withColumn("sunrise", col("sunrise").cast(StringType()))
+        weather_data = weather_data.withColumn("sunset", col("sunset").cast(StringType()))
+            
+        # Écrire les données de la région dans la collection "weather"
+        weather_collection.insert_many(weather_data.toPandas().to_dict(orient="records"))
 
+# Appliquer une transformation pour chaque batch de données
 df.writeStream \
-    .format("console") \
+    .foreachBatch(process_batch) \
     .outputMode("append") \
     .start() \
     .awaitTermination()

@@ -9,7 +9,7 @@ import json
 topic = 'openweathermap'
 
 # Configuration de la connexion à l'API OpenWeatherMap
-api_key = '1faffa257e9d684c74c4580c700c64da'
+api_key = 'f51253f752e292825af2574ea0d1346c'
 units = "metric"
 
 def flatten_dict(dictionary, parent_key='', sep='_'):
@@ -36,37 +36,48 @@ def fetch_and_publish_weather(regions: list) -> None:
     all_data = []
     # Récupération des données de l'API OpenWeatherMap pour chaque région
     current = int(time.time())
+    ten_minutes_ago = current - 660
     for region in regions:
         # Log
         print(f"Sending request for {region['name']}...")
-        url = f"https://api.openweathermap.org/data/3.0/onecall/timemachine?lat={region['latitude']}&lon={region['longitude']}&units={units}&dt={current}&appid={api_key}"
-        response = requests.get(url)
-        if response.status_code == 200:
-            data = response.json()
+        current_url = f"https://api.openweathermap.org/data/3.0/onecall/timemachine?lat={region['latitude']}&lon={region['longitude']}&units={units}&dt={current}&appid={api_key}"
+        ten_minutes_ago_url = f"https://api.openweathermap.org/data/3.0/onecall/timemachine?lat={region['latitude']}&lon={region['longitude']}&units={units}&dt={ten_minutes_ago}&appid={api_key}"
+        current_response = requests.get(current_url)
+        ten_minutes_ago_response = requests.get(ten_minutes_ago_url)
+        if current_response.status_code == 200 and ten_minutes_ago_response.status_code == 200:
+            current_data = current_response.json()
+            ten_minutes_ago_data = ten_minutes_ago_response.json()
             # Ajouter le nom de la région aux données
-            data['region_name'] = region['name']
-            flattened_data = flatten_dict(data)
-            all_data.append(flattened_data)
+            current_data['region_name'] = region['name']
+            ten_minutes_ago_data['region_name'] = region['name']
+            flattened_current_data = flatten_dict(current_data)
+            flattened_ten_minutes_ago_data = flatten_dict(ten_minutes_ago_data)
+            all_data.append(flattened_current_data)
+            all_data.append(flattened_ten_minutes_ago_data)
             # Log
-            print(f"Request sended for {region['name']}✅")
+            print(f"Request sent for {region['name']}✅")
     # Log
     print("Request sent for all regions✅")
     print("Response for all regions: ", end=" ")
     pprint(all_data)
     # Conversion des données en bytes
     value_bytes = json.dumps(all_data).encode('utf-8')
-    # Log
-    print("Sending data for all regions...")
-    # Envoi des données sur le topic Apache Kafka
-    producer.send(topic, value=value_bytes)
-    print("Data sent for all regions✅")
+    if (len(all_data) == 24):
+        # Log
+        print("Sending data for all regions...")
+        # Envoi des données sur le topic Apache Kafka
+        producer.send(topic, value=value_bytes)
+        print("Data sent for all regions✅")
+    else:
+        print("❌❌❌ Data not sended")
+        print("❌❌❌ We have not retrieve all data")
 
 # Charger les données des régions depuis le fichier JSON
 with open('regions.json') as file:
     regions = json.load(file)
     
 # Boucle principale pour exécuter la tâche planifiée pour toutes les régions
-schedule.every(2).minutes.do(fetch_and_publish_weather, regions=regions)
+schedule.every(15).minutes.do(fetch_and_publish_weather, regions=regions)
 
 # Boucle principale pour exécuter les tâches planifiées
 while True:
