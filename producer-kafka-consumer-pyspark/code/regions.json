@@ -5,9 +5,14 @@
         "longitude": -16.75
     },
     {
-        "name": "Dakar/Yoff",
+        "name": "Dakar",
         "latitude": 14.7333,
         "longitude": -17.5
+    },
+    {
+        "name": "Thies",
+        "latitude": 14.7948093,
+        "longitude": -16.9529272
     },
     {
         "name": "Diourbel",
