@@ -1,9 +1,6 @@
 [submodule "Temperature-Forecasting"]
 	path = Temperature-Forecasting
 	url = https://github.com/dnaby/Temperature-Forecasting.git
-[submodule "weathear-app/weather-app"]
-	path = weathear-app/weather-app
-	url = https://github.com/SalyDgn/weather-app.git
 [submodule "Weathear-App/weather-app"]
 	path = Weathear-App/weather-app
 	url = https://github.com/SalyDgn/weather-app.git
