@@ -7,3 +7,6 @@
 [submodule "Weathear-App/weather-app"]
 	path = Weathear-App/weather-app
 	url = https://github.com/SalyDgn/weather-app.git
+[submodule "weather-app/weather-app"]
+	path = weather-app/weather-app
+	url = https://github.com/SalyDgn/weather-app.git
