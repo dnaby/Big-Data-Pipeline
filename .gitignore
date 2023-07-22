@@ -1,3 +1,3 @@
-./elk/elasticsearch
+#./elk/elasticsearch
 
-run.sh
+#run.sh

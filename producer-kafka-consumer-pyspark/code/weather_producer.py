@@ -62,7 +62,7 @@ def fetch_and_publish_weather(regions: list) -> None:
     pprint(all_data)
     # Conversion des données en bytes
     value_bytes = json.dumps(all_data).encode('utf-8')
-    if (len(all_data) == 24):
+    if (len(all_data) == 26):
         # Log
         print("Sending data for all regions...")
         # Envoi des données sur le topic Apache Kafka

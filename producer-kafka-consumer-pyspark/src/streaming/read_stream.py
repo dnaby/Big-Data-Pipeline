@@ -75,7 +75,8 @@ df = df.select(
     col("exploded.lat").alias("lat"),
     col("exploded.lon").alias("lon"),
     col("exploded.region_name").alias("region"),
-    col("exploded.timezone").alias("timezone")
+    col("exploded.timezone").alias("timezone"),
+    col("exploded.data_weather_icon").alias("icon")
 )
 
 # TODO faire le preprocessing ici
@@ -89,6 +90,9 @@ df = df.drop("dt")
 def process_batch(batch_df, batch_id):
     # Écrire les données dans MongoDB
     client = MongoClient(MONGODB_CONNECTION_STRING)
+    db = client["openweathermap"]
+    weather_collection = db["weather"]
+    predictions_collection = db["predictions"]
     
     # Appel à l'API pour obtenir les prédictions de température
     regions_df = batch_df.groupBy("region")
@@ -97,10 +101,6 @@ def process_batch(batch_df, batch_id):
     # Boucle sur chaque région
     for region in regions:
         region_name = region["region"]
-        # BD
-        db = client[region_name.replace('/', '_')]
-        weather_collection = db["weather"]
-        predictions_collection = db["predictions"]
         # Faire la prédiction sur les données de la région
         region_data = batch_df.filter(batch_df["region"] == region_name)
         # Récupérer lat et lon pour la région
@@ -126,11 +126,13 @@ def process_batch(batch_df, batch_id):
             data_response = response.json()
             predictions = data_response["predictions"]
             for prediction in predictions:
+                # set region
+                prediction["region"] = region_name
                 # Check if there is an existing prediction with the same timestamp
-                existing_predictions = predictions_collection.count_documents({"timestamp": prediction["timestamp"]})
+                existing_predictions = predictions_collection.count_documents({"region": region_name, "timestamp": prediction["timestamp"]})
                 if existing_predictions > 0:
                     # Update the existing prediction with the new temperature value
-                    predictions_collection.update_many({"timestamp": prediction["timestamp"]}, {"$set": {"temperature": prediction["temperature"]}})
+                    predictions_collection.update_many({"region": region_name, "timestamp": prediction["timestamp"]}, {"$set": {"temperature": prediction["temperature"]}})
                 else:
                     # Insert the new prediction into the collection
                     predictions_collection.insert_one(prediction)
