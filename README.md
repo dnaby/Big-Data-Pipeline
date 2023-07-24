@@ -18,7 +18,7 @@ docker network create pipeline
 bash run.sh
 ```
 
-And in order to execute the pyspark stream processing. Go to the spark-master container and execute this commande:
+And in order to execute the pyspark stream processing. Go to the spark-master container and execute this command:
 
 ```bash
 pip install --no-cache-dir -r /src/requirements.txt --no-warn-script-location
