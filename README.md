@@ -2,12 +2,13 @@
 
 ## Présentation
 
-Ce projet contient 4 dossiers:
+Ce projet contient 5 dossiers:
 
 - un dossier elk: contenant la stack elasticsearch, logstash et kibana pour la gestion des logs depuis kafka et l'envoie d'alertes en cas de retards sur les arrivées des données;
 - un dossier producer-kafka-consumer-pyspark: contenant un producer qui lit des données depuis l'API openweathermap, une broker kafka et un consumer Apache Structured Streaming qui lit les données sur Apache Kafka.
 - un dossier Temperature-Forecasting: qui fournit un environnement conteneurisé de notre API fait avec FastAPI. Les informations sur le dit dossier sont accessible depuis son propre README.
 - un dossier weatherapp: qui présente un peu l'interface front fait avec ReactJS et ExpressJS
+- un dossier images: contenant les captures necessaires pour notre README
 
 ## Execute
 
